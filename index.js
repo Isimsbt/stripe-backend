@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const stripe = require('stripe')('sk_test_51R4ton2MVt6ZQbAT6brPhusocUWaPakFbHSAHoWgQVpyX7o0NjtWnetMtKaPGQJqpwgs0Qkp0FUwhLA0Qsn59OPS00CLUDwGiz'); // Remplacez par votre clé secrète Stripe
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 const app = express();
 
@@ -12,7 +14,7 @@ app.post('/create-payment-intent', async (req, res) => {
     const { amount, currency } = req.body;
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount, // Montant en centimes
+      amount: amount,
       currency: currency,
       payment_method_types: ['card'],
     });
@@ -20,6 +22,35 @@ app.post('/create-payment-intent', async (req, res) => {
     res.json({
       clientSecret: paymentIntent.client_secret,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/create-checkout-session', async (req, res) => {
+  try {
+    const { amount, currency, success_url, cancel_url } = req.body;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: currency,
+            product_data: {
+              name: 'Achat E-Commerce IA',
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: success_url,
+      cancel_url: cancel_url,
+    });
+
+    res.json({ url: session.url });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
